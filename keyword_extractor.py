@@ -3,10 +3,17 @@ from keybert import KeyBERT
 kw_model = KeyBERT()
 
 def extract_keywords(text, sentiment_label, top_n=5):
-    """
-    Extract keywords from the text using KeyBERT.
-    The sentiment_label can be used to customize keyword extraction if needed.
-    """
+    if isinstance(sentiment_label, dict):
+        label = sentiment_label.get("label")
+        score = sentiment_label.get("score")
+    else:
+        label = sentiment_label
+        score = None
+
     keywords = kw_model.extract_keywords(text, top_n=top_n)
-    # Return only the keywords (without scores) as a list
-    return [kw[0] for kw in keywords]
+    keyword_list = [kw[0] for kw in keywords]
+    return {
+        "sentiment_label": label,
+        "sentiment_score": score,
+        "keywords": keyword_list
+    }
