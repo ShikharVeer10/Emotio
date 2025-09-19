@@ -19,7 +19,14 @@ def get_sentiment(text):
 from transformers import pipeline
 
 topic_pipeline = pipeline("zero-shot-classification", device=device)
-CANDIDATE_TOPICS = ["politics", "sports", "entertainment", "technology", "health", "finance", "education"]
+
+CANDIDATE_TOPICS = [
+    "politics", "sports", "entertainment", "technology", "health", "finance", "education",
+    "business", "cryptocurrency", "blockchain", "ai", "machine learning", "customer service",
+    "food", "weather", "events", "travel", "science", "research", "productivity", "marketing",
+    "social media", "startups", "career", "promotion", "project", "app", "service", "feedback",
+    "conference", "networking", "automation", "workflow", "community", "announcement"
+]
 
 def get_topic(text):
     result = topic_pipeline(text, candidate_labels=CANDIDATE_TOPICS)
