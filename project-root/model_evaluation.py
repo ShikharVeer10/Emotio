@@ -75,7 +75,7 @@ def plot_confusion_matrix(cm, labels, title, filename):
     plt.ylabel('True Sentiment')
     plt.tight_layout()
     plt.savefig(filename, dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.close()  # Close the figure instead of showing it
     print(f"Confusion matrix saved as: {filename}")
 
 def evaluate_model_detailed(true_labels, predicted_labels, method_name, plot_filename):
