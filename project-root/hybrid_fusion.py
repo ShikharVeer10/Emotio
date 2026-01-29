@@ -60,45 +60,19 @@ class FusedPrediction:
 
 
 class ConfidenceCalibrator:
-    """
-    Calibrates model confidence scores using Platt scaling.
-    
-    Formula: conf_calibrated = σ(α * conf_raw + β)
-    where σ is the sigmoid function.
-    """
     
     def __init__(self, alpha: float = 1.0, beta: float = 0.0):
-        """
-        Initialize calibrator with scaling parameters.
         
-        Args:
-            alpha: Scale parameter (default: 1.0, no scaling)
-            beta: Shift parameter (default: 0.0, no shift)
-        """
         self.alpha = alpha
         self.beta = beta
     
     def calibrate(self, raw_confidence: float) -> float:
-        """
-        Apply Platt scaling to raw confidence score.
-        
-        Args:
-            raw_confidence: Raw confidence score from model
-            
-        Returns:
-            Calibrated confidence score in [0, 1]
-        """
+       
         logit = self.alpha * raw_confidence + self.beta
         return 1.0 / (1.0 + np.exp(-logit))
     
     def fit(self, raw_scores: np.ndarray, true_labels: np.ndarray):
-        """
-        Fit calibration parameters on validation data.
-        
-        Args:
-            raw_scores: Array of raw confidence scores
-            true_labels: Binary array (1 if prediction was correct)
-        """
+       
         from scipy.optimize import minimize
         
         def neg_log_likelihood(params):
@@ -117,30 +91,12 @@ class ConfidenceCalibrator:
 
 
 class HybridFusionStrategy:
-    """
-    Implements weighted ensemble fusion for multi-model sentiment analysis.
-    
-    The fusion strategy combines predictions using:
-    P_fused(c) = Σ(w_i * conf_i * p_i(c)) / Σ(w_i * conf_i)
-    
-    Attributes:
-        model_weights: Dictionary mapping model names to their weights
-        calibrators: Dictionary mapping model names to their confidence calibrators
-    """
     
     def __init__(
         self,
         model_weights: Optional[Dict[str, float]] = None,
         use_confidence_weighting: bool = True
     ):
-        """
-        Initialize fusion strategy.
-        
-        Args:
-            model_weights: Dictionary of {model_name: weight}. 
-                          If None, uses equal weights.
-            use_confidence_weighting: Whether to weight by model confidence
-        """
         self.model_weights = model_weights or {}
         self.use_confidence_weighting = use_confidence_weighting
         self.calibrators: Dict[str, ConfidenceCalibrator] = {}
@@ -154,7 +110,6 @@ class HybridFusionStrategy:
         }
     
     def register_calibrator(self, model_name: str, calibrator: ConfidenceCalibrator):
-        """Register a confidence calibrator for a specific model."""
         self.calibrators[model_name] = calibrator
     
     def get_weight(self, model_name: str) -> float:
@@ -167,19 +122,7 @@ class HybridFusionStrategy:
         self,
         predictions: List[ModelPrediction]
     ) -> FusedPrediction:
-        """
-        Fuse multiple model predictions into a single prediction.
-        
-        Mathematical formulation:
-        P_fused(c) = Σ(w_i * conf_i * p_i(c)) / Z
-        where Z = Σ(w_i * conf_i) is the normalization constant
-        
-        Args:
-            predictions: List of ModelPrediction objects from different models
-            
-        Returns:
-            FusedPrediction containing the final prediction and metadata
-        """
+       
         if not predictions:
             raise ValueError("At least one prediction is required for fusion")
         
@@ -232,21 +175,7 @@ class HybridFusionStrategy:
         predictions: List[ModelPrediction],
         true_label: str
     ) -> Dict[str, Dict]:
-        """
-        Perform ablation study by testing each model subset.
-        
-        Returns performance metrics for:
-        - Each individual model
-        - All pairwise combinations
-        - Full ensemble
-        
-        Args:
-            predictions: List of all model predictions
-            true_label: Ground truth label
-            
-        Returns:
-            Dictionary with ablation results
-        """
+       
         from itertools import combinations
         
         results = {}
@@ -272,16 +201,7 @@ class HybridFusionStrategy:
 
 
 class MultiModelSentimentAnalyzer:
-    """
-    Unified interface for multi-model sentiment analysis with hybrid fusion.
     
-    This class integrates:
-    1. RoBERTa (cardiffnlp/twitter-roberta-base-sentiment-latest)
-    2. VADER (lexicon-based)
-    3. BART-MNLI (zero-shot classification)
-    
-    And applies the HybridFusionStrategy for final predictions.
-    """
     
     def __init__(
         self,
@@ -415,18 +335,7 @@ class MultiModelSentimentAnalyzer:
         text: str,
         models: Optional[List[str]] = None
     ) -> FusedPrediction:
-        """
-        Analyze text using specified models and return fused prediction.
         
-        Args:
-            text: Input text to analyze
-            models: List of model names to use. 
-                   Options: ["roberta", "vader", "bart_mnli"]
-                   If None, uses all models.
-                   
-        Returns:
-            FusedPrediction with combined sentiment analysis
-        """
         if models is None:
             models = ["roberta", "vader", "bart_mnli"]
         
