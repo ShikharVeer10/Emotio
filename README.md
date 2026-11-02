@@ -1,282 +1,172 @@
-# Emotio — Hybrid Sentiment Analysis Framework
+# Emotio
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![Transformers](https://img.shields.io/badge/Transformers-HuggingFace-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+Emotio is a Python sentiment-analysis project for general text and Twitter/X content. It combines pretrained transformer models with VADER, topic classification, keyword extraction, sarcasm and negation heuristics, and evaluation utilities.
 
-Emotio is a **hybrid deep learning framework** for real-time sentiment analysis of social media content, specifically designed for Twitter/X data streams. The framework integrates multiple complementary models through a mathematically defined fusion strategy.
+## What is implemented
 
----
+- **Baseline sentiment:** Cardiff NLP's `twitter-roberta-base-sentiment-latest`
+- **Topic classification:** zero-shot classification with a built-in list of 36 topic labels
+- **Keyword extraction:** KeyBERT
+- **Advanced analysis:** RoBERTa, VADER, and DistilBERT combined with cross-attention-style fusion
+- **Sarcasm and negation analysis:** rule-based detectors used by the advanced analyzer
+- **Weighted fusion:** optional RoBERTa, VADER, and BART-MNLI ensemble in `hybrid_fusion.py`
+- **Twitter/X analysis:** recent English tweets retrieved with Tweepy and exported to CSV
+- **Evaluation:** accuracy, macro/weighted F1, confusion matrices, latency, throughput, memory, class imbalance, reliability, sarcasm/mixed-sentiment, and concept-drift utilities
+- **CPU/GPU support:** Transformers pipelines use GPU when available in the baseline utilities; analyzers accept a Transformers device ID
 
-## 🎯 Key Features
+## Repository layout
 
-- **Hybrid Multi-Model Fusion:** Combines RoBERTa, VADER, and BART-MNLI with weighted ensemble
-- **Mathematical Fusion Strategy:** Formally defined as `P_fused(c) = Σ(wᵢ·confᵢ·pᵢ(c))/Z`
-- **Real-Time Analysis:** Optimized for low-latency inference with performance benchmarking
-- **Comprehensive Evaluation:** Inter-annotator reliability, sarcasm detection, concept drift analysis
-- **Topic Classification:** Zero-shot classification across 30+ topic categories
-- **Keyword Extraction:** BERT-based keyword extraction with KeyBERT
-- **GPU Acceleration:** Automatic GPU detection and utilization
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    INPUT TEXT (Twitter)                      │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│              TEXT PREPROCESSING MODULE                       │
-│  • URL Removal • @Mention Processing • Hashtag Handling     │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-         ┌─────────────────┼─────────────────┐
-         ▼                 ▼                 ▼
-   ┌───────────┐    ┌───────────┐    ┌────────────────┐
-   │  RoBERTa  │    │   VADER   │    │   BART-MNLI    │
-   │   w=0.45  │    │   w=0.25  │    │    w=0.30      │
-   └─────┬─────┘    └─────┬─────┘    └───────┬────────┘
-         │                │                   │
-         └────────────────┼───────────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│               HYBRID FUSION MODULE                           │
-│        P_fused(c) = Σ(wᵢ·confᵢ·pᵢ(c)) / Z                  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│  OUTPUT: Sentiment Label | Confidence | Topic | Keywords    │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 📁 Project Structure
-
-```
+```text
 Emotio/
-├── project-root/
-│   ├── model_training.py           # Core sentiment & topic models
-│   ├── keyword_extractor.py        # KeyBERT keyword extraction
-│   ├── hybrid_fusion.py            # 🆕 Hybrid fusion strategy module
-│   ├── enhanced_evaluation.py      # 🆕 Comprehensive evaluation metrics
-│   ├── run_comprehensive_evaluation.py  # 🆕 Full evaluation runner
-│   ├── model_evaluation.py         # Basic evaluation utilities
-│   ├── twitter_analysis.py         # Twitter API integration
-│   ├── local_analysis.py           # Local text analysis
-│   └── test_sentiment.py           # Test suite
-│
-├── MANUSCRIPT_REVISION_GUIDE.md    # 🆕 Academic paper revision guide
-├── README.md                       # This file
-└── TODO.md                         # Development tasks
+├── README.md
+├── MANUSCRIPT_REVISION_GUIDE.md
+├── test.py
+└── project-root/
+    ├── model_training.py                 # Baseline sentiment and topic pipelines
+    ├── keyword_extractor.py              # KeyBERT extraction
+    ├── advanced_sentiment_model.py       # Sarcasm-aware advanced analyzer
+    ├── hybrid_fusion.py                  # Weighted multi-model fusion
+    ├── local_analysis.py                 # Example local text analysis
+    ├── twitter_analysis.py               # Twitter/X API analysis
+    ├── model_evaluation.py               # Local and Twitter evaluation
+    ├── enhanced_evaluation.py            # Reusable evaluation metrics
+    ├── run_comprehensive_evaluation.py   # End-to-end evaluation runner
+    ├── test_sentiment.py                 # Tweet preprocessing example
+    ├── quick_test.py                     # Advanced analyzer test
+    └── TODO.md
 ```
 
----
+Generated CSV, JSON, log, and model files are ignored by `.gitignore`. Existing PNG files in `project-root/` are checked-in evaluation artifacts.
 
-## 🚀 Installation
+## Requirements and installation
 
-### Prerequisites
-- Python 3.8+
-- pip or conda
-
-### Setup
+Python 3.8+ is recommended. The repository does not currently include a `requirements.txt`, so install the runtime dependencies directly:
 
 ```bash
-# Clone repository
 git clone https://github.com/ShikharVeer10/Emotio.git
 cd Emotio
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install torch transformers keybert sentence-transformers \
+    vaderSentiment scipy numpy pandas scikit-learn matplotlib seaborn psutil tweepy
 ```
 
-### Dependencies
+The first use downloads the configured Hugging Face and KeyBERT models. Use a CUDA-compatible PyTorch installation if GPU inference is required.
 
-```bash
-pip install transformers torch keybert vaderSentiment pandas numpy scikit-learn matplotlib seaborn psutil tweepy
-```
+## Quick start
 
----
-
-## 💻 Usage
-
-### Basic Sentiment Analysis
+Run commands from the repository root. The baseline module loads its models when imported:
 
 ```python
+import sys
+sys.path.insert(0, "project-root")
+
 from model_training import get_sentiment, get_topic
 from keyword_extractor import extract_keywords
 
-text = "I absolutely love this new AI feature! It's amazing!"
-
-# Get sentiment
+text = "I love this new feature!"
 sentiment = get_sentiment(text)
-print(f"Sentiment: {sentiment['label']} (confidence: {sentiment['score']:.3f})")
-
-# Get topic
-topic, score = get_topic(text)
-print(f"Topic: {topic} (score: {score:.3f})")
-
-# Extract keywords
+topic, topic_score = get_topic(text)
 keywords = extract_keywords(text, sentiment)
-print(f"Keywords: {keywords['keywords']}")
+
+print(sentiment)                    # {'label': ..., 'score': ...}
+print(topic, topic_score)
+print(keywords["keywords"])
 ```
 
-### Hybrid Fusion Analysis
+For the advanced analyzer:
 
 ```python
-from hybrid_fusion import MultiModelSentimentAnalyzer, HybridFusionStrategy
+import sys
+sys.path.insert(0, "project-root")
 
-# Initialize with custom weights (optional)
-fusion_strategy = HybridFusionStrategy(
-    model_weights={"roberta": 0.45, "vader": 0.25, "bart_mnli": 0.30}
-)
+from advanced_sentiment_model import AdvancedSentimentAnalyzer
 
-analyzer = MultiModelSentimentAnalyzer(device=-1, fusion_strategy=fusion_strategy)
+analyzer = AdvancedSentimentAnalyzer(device=-1)  # -1 = CPU; 0 = first GPU
+result = analyzer.analyze("Oh great, another meeting that could have been an email.")
 
-# Analyze text
-result = analyzer.analyze("Great product but terrible customer service")
-
-print(f"Fused Prediction: {result.predicted_class}")
-print(f"Confidence: {result.confidence:.4f}")
-print(f"Model Contributions: {result.model_contributions}")
+print(result["predicted_class"])
+print(result["confidence"])
+print(result["sarcasm_analysis"])
+print(result["negation_analysis"])
+print(result["explanation"])
 ```
 
-### Comprehensive Evaluation
+The advanced result also contains class probabilities, model contributions, an attention matrix, individual model predictions, and the generated explanation.
+
+## Command-line scripts
+
+From the repository root:
 
 ```bash
+# Example local analysis
+python project-root/local_analysis.py
+
+# Advanced analyzer smoke test
+python project-root/quick_test.py
+
+# Baseline evaluation on the built-in local validation set
+python project-root/model_evaluation.py
+
+# Comprehensive metrics and a JSON report
 python project-root/run_comprehensive_evaluation.py
 ```
 
-This generates:
-- Performance benchmarks (latency, throughput)
-- Inter-annotator reliability (Cohen's Kappa)
-- Sarcasm & mixed-sentiment accuracy
-- Class imbalance analysis
-- Concept drift detection
+`model_evaluation.py` writes `local_evaluation_results.csv` and confusion-matrix images. The comprehensive runner writes a timestamped `comprehensive_evaluation_*.json` report and additional plots.
 
----
+## Twitter/X analysis
 
-## 📊 Evaluation Metrics
+`twitter_analysis.py` uses Tweepy `Client.search_recent_tweets`, requests the recent English tweets matching the hard-coded query `AI`, and analyzes up to 100 tweets. Pass the bearer token as the first argument, or enter it when prompted:
 
-The framework provides comprehensive evaluation addressing academic review requirements:
-
-| Metric | Description | Module |
-|--------|-------------|--------|
-| **Latency (P50/P95/P99)** | Inference time percentiles | `LatencyBenchmark` |
-| **Throughput** | Samples per second | `LatencyBenchmark` |
-| **Cohen's Kappa** | Inter-annotator reliability | `InterAnnotatorReliability` |
-| **Sarcasm Accuracy** | Detection of sarcastic text | `SarcasmMixedSentimentEvaluator` |
-| **Mixed Sentiment** | Handling of ambiguous sentiment | `SarcasmMixedSentimentEvaluator` |
-| **Class Imbalance Ratio** | Distribution analysis | `ClassImbalanceAnalyzer` |
-| **Per-Class F1** | Balanced performance | `ClassImbalanceAnalyzer` |
-| **Concept Drift** | Temporal performance | `ConceptDriftDetector` |
-| **Memory Usage** | Peak/per-sample memory | `MemoryProfiler` |
-
----
-
-## 📝 Academic Paper Resources
-
-For researchers preparing manuscripts, see `MANUSCRIPT_REVISION_GUIDE.md` which provides:
-
-- **Figure 1 Template:** Clear system architecture diagram
-- **Abstract Template:** Structured with purpose, methodology, findings, implications
-- **Conclusion Template:** With future scope
-- **IEEE Reference Format:** Complete guidelines and examples
-- **IJIT Citation Guidance:** For Springer journal citations
-- **Writing Style Guide:** Passive voice, abbreviations, consistency
-
----
-
-## 🔧 Configuration
-
-### Model Weights (Hybrid Fusion)
-
-```python
-# Default weights based on empirical performance
-weights = {
-    "roberta": 0.45,      # Strong on contextual sentiment
-    "vader": 0.25,        # Good for explicit sentiment words
-    "bart_mnli": 0.30     # Robust for nuanced sentiment
-}
+```bash
+python project-root/twitter_analysis.py YOUR_BEARER_TOKEN
 ```
 
-### Topic Categories
+The script removes URLs, leading retweet markers, mention symbols, and hashtag symbols before analysis. It writes a timestamped `twitter_analysis_results_*.csv` containing the original and cleaned text, sentiment, topic, scores, trigger terms, and timestamp. Run `model_evaluation.py` afterward to compare predictions with a VADER baseline when Twitter results are available.
 
-The zero-shot topic classifier supports 30+ topics including:
-- Technology, AI, Machine Learning
-- Politics, Sports, Entertainment
-- Business, Finance, Cryptocurrency
-- Health, Science, Education
-- And more...
+## Weighted hybrid fusion
 
----
+`hybrid_fusion.py` provides `MultiModelSentimentAnalyzer`, which can combine:
 
-## 📈 Performance
+- Cardiff NLP Twitter RoBERTa
+- VADER
+- BART-MNLI zero-shot sentiment classification
 
-| Metric | Value |
-|--------|-------|
-| Agreement with Human Labels | 89.3% |
-| Cohen's Kappa | 0.84 (Substantial) |
-| Average Latency | ~XX ms |
-| P95 Latency | ~XX ms |
-| GPU Memory | ~2GB |
+The default model weights are RoBERTa `0.45`, VADER `0.25`, and BART-MNLI `0.30`. Confidence weighting is enabled by default:
 
-*Note: Run `run_comprehensive_evaluation.py` for actual benchmarks on your hardware.*
+```python
+import sys
+sys.path.insert(0, "project-root")
 
----
+from hybrid_fusion import HybridFusionStrategy, MultiModelSentimentAnalyzer
 
-## 🔮 Future Work
+strategy = HybridFusionStrategy(
+    model_weights={"roberta": 0.45, "vader": 0.25, "bart_mnli": 0.30}
+)
+analyzer = MultiModelSentimentAnalyzer(device=-1, fusion_strategy=strategy)
+result = analyzer.analyze("Great product, but terrible support.")
+print(result.predicted_class, result.confidence)
+```
 
-1. **Multilingual Support:** Extension to non-English languages
-2. **Sarcasm Detection:** Dedicated sarcasm-aware module
-3. **Online Learning:** Concept drift adaptation
-4. **Multimodal Analysis:** Image-text combined sentiment
-5. **Domain Adaptation:** Industry-specific fine-tuning
+## Limitations
 
----
+- Models are loaded from external pretrained checkpoints and require network access on first use.
+- Twitter/X analysis requires a valid bearer token and access to the recent-search endpoint.
+- The project currently has no packaged dependency file, formal test runner, or `LICENSE` file.
+- Evaluation examples use small, hand-written datasets and should not be treated as benchmark results.
 
-## 📄 License
+## Research notes
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+`MANUSCRIPT_REVISION_GUIDE.md` contains the project's manuscript-writing and evaluation guidance. The implementation is intended for experimentation and analysis rather than a production API.
 
----
-
-## 👥 Contributing
-
-Contributions are welcome! Please read the contribution guidelines and submit pull requests to the main branch.
-
----
-
-## 📚 Citation
-
-If you use Emotio in your research, please cite:
+## Citation
 
 ```bibtex
-@software{emotio2024,
+@software{emotio,
   author = {Shikhar Veer},
-  title = {Emotio: A Hybrid Deep Learning Framework for Real-Time Sentiment Analysis},
+  title = {Emotio: Hybrid Sentiment Analysis for Text and Twitter/X Content},
   year = {2024},
   url = {https://github.com/ShikharVeer10/Emotio}
 }
 ```
-
----
-
-## 🙏 Acknowledgments
-
-- HuggingFace Transformers team for pre-trained models
-- Cardiff NLP for Twitter-RoBERTa
-- VADER sentiment analysis team
-- KeyBERT developers
-
----
-
-*For questions or support, please open an issue on GitHub.*
